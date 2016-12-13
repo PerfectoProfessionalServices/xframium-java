@@ -20,7 +20,9 @@
  *******************************************************************************/
 package org.xframium.page.keyWord.step.spi;
 
+import java.util.HashMap;
 import java.util.Map;
+
 import org.openqa.selenium.WebDriver;
 import org.xframium.container.SuiteContainer;
 import org.xframium.page.Page;
@@ -57,36 +59,75 @@ import org.xframium.page.keyWord.step.AbstractKeyWordStep;
  * 
  * </ul>
  */
-public class KWSCall extends AbstractKeyWordStep
+public class KWSCall2 extends AbstractKeyWordStep
 {
+    public KWSCall2()
+    {
+        kwName = "Call Test/Function";
+        kwDescription = "Allows the script to call another pre-defined function or test.  You can pass named context parameters that are scoped to the =function call by adding parameters with names and values.  OVERRIDE is the only reserved name using for overriding data provider names";
+        kwHelp = "https://www.xframium.org/keyword.html#kw-call";
+        orMapping = false;
+        category = "Flow Control";
+    }
 	/* (non-Javadoc)
 	 * @see com.perfectoMobile.page.keyWord.step.AbstractKeyWordStep#_executeStep(com.perfectoMobile.page.Page, org.openqa.selenium.WebDriver, java.util.Map, java.util.Map)
 	 */
 	@Override
 	public boolean _executeStep( Page pageObject, WebDriver webDriver, Map<String, Object> contextMap, Map<String, PageData> dataMap, Map<String, Page> pageMap, SuiteContainer sC ) throws Exception
 	{
+		Map<String,String> localContextMap = new HashMap<String,String>( 20 );
+		boolean returnValue = false;
+		
 		if ( log.isDebugEnabled() )
 			log.debug( "Execution Function " + getName() );
 		
-		if ( getParameterList() != null && !getParameterList().isEmpty() )
+		try
 		{
-			for ( KeyWordParameter param : getParameterList() )
+			
+			if ( getParameterList() != null && !getParameterList().isEmpty() )
 			{
-				String dataProvider = getParameterValue( param, contextMap, dataMap ) + "";
-				String[] dpArray = dataProvider.split( "=" );
-				if ( dpArray.length == 2 )
+				for ( KeyWordParameter param : getParameterList() )
 				{
-					PageData pageData = dataMap.get( dpArray[1] );
-					if ( pageData != null )
-						dataMap.put( dpArray[0], pageData );
+					if ( param.getName() != null && !param.getName().isEmpty() )
+					{
+						if ( param.getName().equals( "OVERRIDE") )
+						{
+							//
+							// Override is used for dataMap parameter mappings
+							//
+							String dataProvider = getParameterValue( param, contextMap, dataMap ) + "";
+							String[] dpArray = dataProvider.split( "=" );
+							if ( dpArray.length == 2 )
+							{
+								PageData pageData = dataMap.get( dpArray[1] );
+								if ( pageData != null )
+									dataMap.put( dpArray[0], pageData );
+							}
+						}
+						else
+						{
+							//
+							// These are locally used context variables
+							//
+							localContextMap.put( param.getName(), param.getName() );
+							contextMap.put( param.getName(), getParameterValue( param, contextMap, dataMap ) + "" );
+						}
+					}
 				}
 			}
+			
+			if ( sC != null )
+				returnValue = sC.getTest( getName() ).executeTest(webDriver, contextMap, dataMap, pageMap, sC);
+			else
+				returnValue = KeyWordDriver.instance().executionFunction( getName(), webDriver, dataMap, pageMap, sC );
+		}
+		finally
+		{
+			for ( String name : localContextMap.keySet() )
+				contextMap.remove( name );
 		}
 		
-		if ( sC != null )
-			return sC.getTest( getName() ).executeTest(webDriver, contextMap, dataMap, pageMap, sC);
-		else
-			return KeyWordDriver.instance().executionFunction( getName(), webDriver, dataMap, pageMap, sC );
+		return returnValue;
 	}
 	
 	public boolean isRecordable()

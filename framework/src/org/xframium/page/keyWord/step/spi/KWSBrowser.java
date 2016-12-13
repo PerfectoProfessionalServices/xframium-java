@@ -20,8 +20,14 @@
  *******************************************************************************/
 package org.xframium.page.keyWord.step.spi;
 
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.Cookie;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.security.UserAndPassword;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.xframium.container.SuiteContainer;
 import org.xframium.device.factory.MorelandWebElement;
 import org.xframium.exception.ScriptConfigurationException;
@@ -30,7 +36,8 @@ import org.xframium.page.Page;
 import org.xframium.page.data.PageData;
 import org.xframium.page.element.Element;
 import org.xframium.page.keyWord.step.AbstractKeyWordStep;
-
+import org.xframium.page.keyWord.step.spi.KWSMath.MATH_TYPE;
+import org.xframium.spi.driver.NativeDriverProvider;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +55,7 @@ public class KWSBrowser extends AbstractKeyWordStep
         kwDescription = "Allows the script to work with browser windows";
         kwHelp = "https://www.xframium.org/keyword.html#kw-browser";
         orMapping = false;
+        category = "Web";
     }
 
     /**
@@ -55,23 +63,12 @@ public class KWSBrowser extends AbstractKeyWordStep
      */
     public enum SwitchType
     {
-        SWITCH_BY_TITLE( 1, "SWITCH_BY_TITLE", "Switch to Window with Title" ), 
-        SWITCH_BY_URL( 2, "SWITCH_BY_URL", "Switch to Window with URL" ), 
-        SWITCH_NAMED_FRAME( 3, "SWITCH_NAMED_FRAME", "Switch to Named Frame" ), 
-        SWITCH_INDEX( 4, "SWITCH_INDEX", "Switch to Indexed frame" ), 
-        PARENT_FRAME( 5, "PARENT_FRAME", "Switch to Parent Frame" ), 
-        DEFAULT_FRAME( 6, "DEFAULT_FRAME", "Switch to Default Window" ), 
-        CLOSE_WINDOW( 7, "CLOSE_WINDOW", "Close the current window" ), 
-        SWITCH_TO_ELEMENT( 8, "SWITCH_TO_ELEMENT","Switch to the frame by element" ), 
-        MAXIMIZE( 9, "MAXIMIZE", "Maximize the current window" ),  
-        GET_TITLE( 11, "GET_TITLE", "Get the title of the current window" ), 
-        GET_URL( 12, "GET_URL", "Get the URL of the current window" ),
-        FORWARD(13, "FORWARD", "Click the forward button"), 
-        BACK(14, "BACK", "Click the back button"),
-        REFRESH(15, "REFRESH", "Click the refresh button"),
-        NAVIGATE(16, "NAVIGATE", "Navigate to the supplied URL"),
-        SWITCH_WIN_INDEX(17, "SWITCH_WIN_INDEX", "Switch to the numbered window")
-        ;
+        SWITCH_BY_TITLE( 1, "SWITCH_BY_TITLE", "Switch to Window with Title" ), SWITCH_BY_URL( 2, "SWITCH_BY_URL", "Switch to Window with URL" ), SWITCH_NAMED_FRAME( 3, "SWITCH_NAMED_FRAME", "Switch to Named Frame" ), SWITCH_INDEX( 4, "SWITCH_INDEX",
+                "Switch to Indexed frame" ), PARENT_FRAME( 5, "PARENT_FRAME", "Switch to Parent Frame" ), DEFAULT_FRAME( 6, "DEFAULT_FRAME", "Switch to Default Window" ), CLOSE_WINDOW( 7, "CLOSE_WINDOW",
+                        "Close the current window" ), SWITCH_TO_ELEMENT( 8, "SWITCH_TO_ELEMENT", "Switch to the frame by element" ), MAXIMIZE( 9, "MAXIMIZE", "Maximize the current window" ), GET_TITLE( 11, "GET_TITLE",
+                                "Get the title of the current window" ), GET_URL( 12, "GET_URL", "Get the URL of the current window" ), FORWARD( 13, "FORWARD", "Click the forward button" ), BACK( 14, "BACK", "Click the back button" ), REFRESH( 15,
+                                        "REFRESH", "Click the refresh button" ), NAVIGATE( 16, "NAVIGATE", "Navigate to the supplied URL" ), SWITCH_WIN_INDEX( 17, "SWITCH_WIN_INDEX", "Switch to the numbered window" ), DELETE_COOKIE( 18, "DELETE_COOKIE",
+                                                "Delete the named cookie" ), GET_COOKIE( 19, "GET_COOKIE", "Switch to the numbered window" ), ADD_COOKIE( 20, "ADD_COOOKIE", "Switch to the numbered window" );
 
         public List<SwitchType> getSupported()
         {
@@ -91,7 +88,10 @@ public class KWSBrowser extends AbstractKeyWordStep
             supportedList.add( SwitchType.BACK );
             supportedList.add( SwitchType.REFRESH );
             supportedList.add( SwitchType.NAVIGATE );
-            supportedList.add(SwitchType.SWITCH_WIN_INDEX);
+            supportedList.add( SwitchType.SWITCH_WIN_INDEX );
+            supportedList.add( SwitchType.DELETE_COOKIE );
+            supportedList.add( SwitchType.GET_COOKIE );
+            supportedList.add( SwitchType.ADD_COOKIE );
             return supportedList;
         }
 
@@ -143,7 +143,7 @@ public class KWSBrowser extends AbstractKeyWordStep
                     return verifySwitchWindow( webDriver, getName(), getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
                 case SWITCH_BY_URL:
                     return verifySwitchWindow( webDriver, getName(), getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
-                    
+
                 case SWITCH_NAMED_FRAME:
                     webDriver.switchTo().frame( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
                     break;
@@ -162,7 +162,7 @@ public class KWSBrowser extends AbstractKeyWordStep
                 case NAVIGATE:
                     webDriver.navigate().to( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
                     break;
-    
+
                 case MAXIMIZE:
                     webDriver.manage().window().maximize();
                     break;
@@ -176,15 +176,15 @@ public class KWSBrowser extends AbstractKeyWordStep
                             throw new ScriptException( "Expected Title of [" + compareTo + "] but received [" + pageTitle + "]" );
                         }
                     }
-    
+
                     if ( !validateData( pageTitle ) )
                         throw new ScriptException( "GET_TITLE Expected a format of [" + getValidationType() + "(" + getValidation() + ") for [" + pageTitle + "]" );
-    
+
                     if ( getContext() != null && !getContext().trim().isEmpty() )
                         contextMap.put( getContext(), pageTitle );
-    
+
                     break;
-    
+
                 case GET_URL:
                     String currentUrl = webDriver.getCurrentUrl();
                     if ( getParameterList().size() > 1 )
@@ -195,16 +195,16 @@ public class KWSBrowser extends AbstractKeyWordStep
                             throw new ScriptException( "Expected Title of [" + compareTo + "] but received [" + currentUrl + "]" );
                         }
                     }
-    
+
                     if ( !validateData( currentUrl ) )
                         throw new ScriptException( "GET_URL Expected a format of [" + getValidationType() + "(" + getValidation() + ") for [" + currentUrl + "]" );
-    
+
                     if ( getContext() != null && !getContext().trim().isEmpty() )
                         contextMap.put( getContext(), currentUrl );
-    
+
                     break;
-                    
-                case BACK:              
+
+                case BACK:
                     webDriver.navigate().back();
                     break;
                 case FORWARD:
@@ -212,12 +212,12 @@ public class KWSBrowser extends AbstractKeyWordStep
                     break;
                 case REFRESH:
                     webDriver.navigate().refresh();
-                    break;     
+                    break;
                 case SWITCH_WIN_INDEX:
-                	int index;
-                	if ( getParameterList().size() < 1)
-                		index = 0;
-                	else {
+                    int index;
+                    if ( getParameterList().size() < 1)
+                        index = 0;
+                    else {
                         // maintain backwards capability when index was second parameter for no reason
                         int paramNum = getParameterList().size() - 1;
                         String paramValue = getParameterValue(getParameterList().get(paramNum), contextMap, dataMap) + "";
@@ -231,12 +231,97 @@ public class KWSBrowser extends AbstractKeyWordStep
                     if (index > availableWindows.size() - 1)
                         throw new ScriptException("Given index [" + index + "] is greater than number of windows [" + availableWindows.size() + "]");
                     webDriver.switchTo().window(String.valueOf(availableWindows.toArray()[index]));
-                	break;
-    
+                    break;
+                case ADD_COOKIE:
+                    Cookie addCookie = new Cookie( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "", getParameterValue( getParameterList().get( 1 ), contextMap, dataMap ) + "" );
+                    if ( webDriver instanceof RemoteWebDriver )
+                        ((RemoteWebDriver) webDriver).manage().addCookie( addCookie );
+                    else if ( webDriver instanceof NativeDriverProvider && ((NativeDriverProvider) webDriver).getNativeDriver() instanceof RemoteWebDriver )
+                    {
+                        ((RemoteWebDriver) ((NativeDriverProvider) webDriver).getNativeDriver()).manage().addCookie( addCookie );
+                    }
+
+                    break;
+
+                case DELETE_COOKIE:
+
+                    if ( getParameterList().size() < 1 )
+                    {
+                        if ( webDriver instanceof RemoteWebDriver )
+                            ((RemoteWebDriver) webDriver).manage().deleteAllCookies();
+                        else if ( webDriver instanceof NativeDriverProvider && ((NativeDriverProvider) webDriver).getNativeDriver() instanceof RemoteWebDriver )
+                        {
+                            ((RemoteWebDriver) ((NativeDriverProvider) webDriver).getNativeDriver()).manage().deleteAllCookies();
+                        }
+                    }
+                    else
+                    {
+                        if ( webDriver instanceof RemoteWebDriver )
+                            ((RemoteWebDriver) webDriver).manage().deleteCookieNamed( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
+                        else if ( webDriver instanceof NativeDriverProvider && ((NativeDriverProvider) webDriver).getNativeDriver() instanceof RemoteWebDriver )
+                        {
+                            ((RemoteWebDriver) ((NativeDriverProvider) webDriver).getNativeDriver()).manage().deleteCookieNamed( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
+                        }
+                    }
+                    break;
+
+                case GET_COOKIE:
+
+                    if ( getParameterList().size() < 1 )
+                    {
+                        Set<Cookie> cookieSet = null;
+                        if ( webDriver instanceof RemoteWebDriver )
+                            cookieSet = ((RemoteWebDriver) webDriver).manage().getCookies();
+                        else if ( webDriver instanceof NativeDriverProvider && ((NativeDriverProvider) webDriver).getNativeDriver() instanceof RemoteWebDriver )
+                        {
+                            cookieSet = ((RemoteWebDriver) ((NativeDriverProvider) webDriver).getNativeDriver()).manage().getCookies();
+                        }
+
+                        StringBuilder buffer = new StringBuilder();
+                        for ( Cookie cookie : cookieSet )
+                        {
+                            buffer.append( cookie.getName() + ":" + cookie.getValue() ).append( ";" );
+                            if ( getContext() != null )
+                            {
+                                contextMap.put( getContext() + "_" + cookie.getName(), cookie.getValue() );
+                            }
+                        }
+                        String cookieValue = buffer.toString();
+                        if ( !validateData( cookieValue ) )
+                        {
+                            throw new IllegalStateException( "Get cookie Expected a format of [" + getValidationType() + "(" + getValidation() + ") for [" + cookieValue + "]" );
+                        }
+
+                        if ( getContext() != null )
+                        {
+                            contextMap.put( getContext(), cookieValue );
+                        }
+
+                    }
+                    else
+                    {
+                        Cookie getCookie = null;
+                        if ( webDriver instanceof RemoteWebDriver )
+                            getCookie = ((RemoteWebDriver) webDriver).manage().getCookieNamed( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
+                        else if ( webDriver instanceof NativeDriverProvider && ((NativeDriverProvider) webDriver).getNativeDriver() instanceof RemoteWebDriver )
+                            getCookie = ((RemoteWebDriver) ((NativeDriverProvider) webDriver).getNativeDriver()).manage().getCookieNamed( getParameterValue( getParameterList().get( 0 ), contextMap, dataMap ) + "" );
+
+                        if ( !validateData( getCookie.getValue() ) )
+                        {
+                            throw new IllegalStateException( "Get cookie Expected a format of [" + getValidationType() + "(" + getValidation() + ") for [" + getCookie.getValue() + "]" );
+                        }
+
+                        if ( getContext() != null )
+                        {
+                            contextMap.put( getContext(), getCookie.getValue() );
+                        }
+                    }
+
+                    break;
+
                 default:
-                    
-     
-                        throw new ScriptConfigurationException( "Unknown Window Operation Type " + getName() );   
+
+                    throw new ScriptConfigurationException( "Unknown Window Operation Type " + getName() );
             }
         }
 
