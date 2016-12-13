@@ -20,12 +20,8 @@
  *******************************************************************************/
 package org.xframium.page.keyWord.step.spi;
 
-import org.openqa.selenium.Alert;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.security.UserAndPassword;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.xframium.container.SuiteContainer;
 import org.xframium.device.factory.MorelandWebElement;
 import org.xframium.exception.ScriptConfigurationException;
@@ -34,7 +30,7 @@ import org.xframium.page.Page;
 import org.xframium.page.data.PageData;
 import org.xframium.page.element.Element;
 import org.xframium.page.keyWord.step.AbstractKeyWordStep;
-import org.xframium.page.keyWord.step.spi.KWSMath.MATH_TYPE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -218,22 +214,23 @@ public class KWSBrowser extends AbstractKeyWordStep
                     webDriver.navigate().refresh();
                     break;     
                 case SWITCH_WIN_INDEX:
-                	int i =0;
-                	int index = 0;
-                	if ( getParameterList().size() < 2)
+                	int index;
+                	if ( getParameterList().size() < 1)
                 		index = 0;
-                	else
-                		index = Integer.valueOf( getParameterValue( getParameterList().get( 1 ), contextMap, dataMap ) + "");
-
-                	for ( String handle : webDriver.getWindowHandles() )
-                	{
-                		if ( i == index )
-                		{
-                			webDriver.switchTo().window(handle);
-                			break;
-                		}
-                		i += 1;  
-                	}
+                	else {
+                        // maintain backwards capability when index was second parameter for no reason
+                        int paramNum = getParameterList().size() - 1;
+                        String paramValue = getParameterValue(getParameterList().get(paramNum), contextMap, dataMap) + "";
+                        try {
+                            index = Integer.valueOf(paramValue);
+                        } catch (NumberFormatException e) {
+                            throw new ScriptException("Expected Number value for index but received [" + paramValue + "]");
+                        }
+                    }
+                    Set<String> availableWindows = webDriver.getWindowHandles();
+                    if (index > availableWindows.size() - 1)
+                        throw new ScriptException("Given index [" + index + "] is greater than number of windows [" + availableWindows.size() + "]");
+                    webDriver.switchTo().window(String.valueOf(availableWindows.toArray()[index]));
                 	break;
     
                 default:

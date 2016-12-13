@@ -20,9 +20,9 @@
  *******************************************************************************/
 package org.xframium.page.keyWord.step.spi;
 
-import java.util.Map;
-
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.xframium.container.SuiteContainer;
 import org.xframium.exception.ScriptConfigurationException;
 import org.xframium.exception.ScriptException;
@@ -33,7 +33,7 @@ import org.xframium.page.element.Element.SetMethod;
 import org.xframium.page.keyWord.KeyWordParameter;
 import org.xframium.page.keyWord.step.AbstractKeyWordStep;
 
-import gherkin.Main;
+import java.util.Map;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -72,7 +72,10 @@ public class KWSSet extends AbstractKeyWordStep
 		{
 			elt.setValue( newValue);
 		}
-		else 
+		else if (option.equalsIgnoreCase("USE_JS")) {
+			((JavascriptExecutor)webDriver).executeScript("var select = arguments[0]; for(var i = 0; i < select.options.length; i++){ if(select.options[i].text == arguments[1]){ select.options[i].selected = true; } }", (WebElement) elt.getNative(), newValue);
+		}
+		else
 		{
 			SetMethod setMethod = SetMethod.valueOf( option.toUpperCase() );
 			
